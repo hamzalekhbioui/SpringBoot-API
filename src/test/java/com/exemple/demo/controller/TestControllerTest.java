@@ -2,6 +2,7 @@ package com.exemple.demo.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.javaproject.controller.TaskController;
+import com.javaproject.exception.TaskNotFoundException;
 import com.javaproject.model.Task;
 import com.javaproject.service.TaskService;
 import org.junit.jupiter.api.Test;
@@ -78,7 +79,7 @@ class TaskControllerTest {
         mockMvc.perform(post("/tasks")
                         .contentType("application/json")
                         .content(objectMapper.writeValueAsString(task)))
-                .andExpect(status().isOk())
+                .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(1))
                 .andExpect(jsonPath("$.title").value("New Task"));
 
@@ -102,7 +103,7 @@ class TaskControllerTest {
         mockMvc.perform(post("/tasks")
                         .contentType("application/json")
                         .content(objectMapper.writeValueAsString(task)))
-                .andExpect(status().isOk())
+                .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(2))
                 .andExpect(jsonPath("$.title").value("Full Task"))
                 .andExpect(jsonPath("$.description").value("A description"))
@@ -122,6 +123,55 @@ class TaskControllerTest {
         verify(taskService, never()).createTask(any());
     }
 
+    @Test
+    void shouldReturn400WhenTitleIsBlank() throws Exception {
+        // Arrange
+        String body = "{\"title\": \"\", \"status\": \"TODO\"}";
+
+        // Act & Assert
+        mockMvc.perform(post("/tasks")
+                        .contentType("application/json")
+                        .content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Validation failed"))
+                .andExpect(jsonPath("$.errors[0]").value("Title is required"));
+
+        verify(taskService, never()).createTask(any());
+    }
+
+    @Test
+    void shouldReturn400WhenStatusIsInvalid() throws Exception {
+        // Arrange
+        String body = "{\"title\": \"My Task\", \"status\": \"INVALID\"}";
+
+        // Act & Assert
+        mockMvc.perform(post("/tasks")
+                        .contentType("application/json")
+                        .content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Validation failed"))
+                .andExpect(jsonPath("$.errors[0]").value("Status must be TODO, IN_PROGRESS, or DONE"));
+
+        verify(taskService, never()).createTask(any());
+    }
+
+    @Test
+    void shouldReturn400WhenDescriptionIsTooLong() throws Exception {
+        // Arrange
+        String longDescription = "a".repeat(501);
+        String body = "{\"title\": \"My Task\", \"description\": \"" + longDescription + "\"}";
+
+        // Act & Assert
+        mockMvc.perform(post("/tasks")
+                        .contentType("application/json")
+                        .content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Validation failed"))
+                .andExpect(jsonPath("$.errors[0]").value("Description must not exceed 500 characters"));
+
+        verify(taskService, never()).createTask(any());
+    }
+
     // --- DELETE /tasks/{id} ---
 
     @Test
@@ -131,8 +181,23 @@ class TaskControllerTest {
 
         // Act & Assert
         mockMvc.perform(delete("/tasks/{id}", taskId))
-                .andExpect(status().isOk());
+                .andExpect(status().isNoContent());
 
         verify(taskService).deleteTask(taskId);
+    }
+
+    @Test
+    void shouldReturn404WhenDeletingNonExistentTask() throws Exception {
+        // Arrange
+        Long nonExistentId = 99L;
+        doThrow(new TaskNotFoundException(nonExistentId)).when(taskService).deleteTask(nonExistentId);
+
+        // Act & Assert
+        mockMvc.perform(delete("/tasks/{id}", nonExistentId))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.message").value("Task not found with id: 99"));
+
+        verify(taskService).deleteTask(nonExistentId);
     }
 }

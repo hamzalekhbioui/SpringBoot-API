@@ -1,5 +1,6 @@
 package com.exemple.demo.service;
 
+import com.javaproject.exception.TaskNotFoundException;
 import com.javaproject.model.Task;
 import com.javaproject.repository.TaskRepository;
 import com.javaproject.service.TaskService;
@@ -111,22 +112,25 @@ class TaskServiceTest {
     void shouldDeleteTask() {
         // Arrange
         Long taskId = 1L;
+        when(taskRepository.existsById(taskId)).thenReturn(true);
 
         // Act
         taskService.deleteTask(taskId);
 
         // Assert
+        verify(taskRepository, times(1)).existsById(taskId);
         verify(taskRepository, times(1)).deleteById(taskId);
     }
 
     @Test
-    void shouldPropagateExceptionWhenDeletingNonExistentTask() {
+    void shouldThrowTaskNotFoundExceptionWhenDeletingNonExistentTask() {
         // Arrange
         Long nonExistentId = 99L;
-        doThrow(new IllegalArgumentException("Task not found")).when(taskRepository).deleteById(nonExistentId);
+        when(taskRepository.existsById(nonExistentId)).thenReturn(false);
 
         // Act & Assert
-        assertThrows(IllegalArgumentException.class, () -> taskService.deleteTask(nonExistentId));
-        verify(taskRepository, times(1)).deleteById(nonExistentId);
+        assertThrows(TaskNotFoundException.class, () -> taskService.deleteTask(nonExistentId));
+        verify(taskRepository, times(1)).existsById(nonExistentId);
+        verify(taskRepository, never()).deleteById(nonExistentId);
     }
 }

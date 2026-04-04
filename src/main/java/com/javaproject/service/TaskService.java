@@ -1,5 +1,6 @@
 package com.javaproject.service;
 
+import com.javaproject.exception.TaskNotFoundException;
 import com.javaproject.model.Task;
 import com.javaproject.repository.TaskRepository;
 import org.springframework.stereotype.Service;
@@ -24,6 +25,9 @@ public class TaskService {
     }
 
     public void deleteTask(Long id) {
+        if (!taskRepository.existsById(id)) {
+            throw new TaskNotFoundException(id);
+        }
         taskRepository.deleteById(id);
     }
 

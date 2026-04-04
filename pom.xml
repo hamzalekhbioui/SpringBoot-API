@@ -61,6 +61,12 @@
             <optional>true</optional>
         </dependency>
 
+        <!-- Validation (Bean Validation / @Valid) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
     </dependencies>
 
     <build>
