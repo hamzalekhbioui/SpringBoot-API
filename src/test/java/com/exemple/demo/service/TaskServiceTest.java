@@ -2,6 +2,7 @@ package com.exemple.demo.service;
 
 import com.javaproject.exception.TaskNotFoundException;
 import com.javaproject.model.Task;
+import com.javaproject.model.TaskStatus;
 import com.javaproject.repository.TaskRepository;
 import com.javaproject.service.TaskService;
 import org.junit.jupiter.api.Test;
@@ -9,9 +10,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -25,56 +31,90 @@ class TaskServiceTest {
     @InjectMocks
     private TaskService taskService;
 
-    // getAllTasks
+    // --- getAllTasks ---
 
     @Test
-    void shouldReturnAllTasks() {
-        // Arrange
+    void shouldReturnAllTasksWithPagination() {
         Task task1 = new Task(1L, "Task 1");
         Task task2 = new Task(2L, "Task 2");
+        Pageable pageable = PageRequest.of(0, 10);
 
-        when(taskRepository.findAll()).thenReturn(List.of(task1, task2));
+        when(taskRepository.findAll(pageable)).thenReturn(new PageImpl<>(List.of(task1, task2)));
 
-        // Act
-        List<Task> tasks = taskService.getAllTasks();
+        Page<Task> result = taskService.getAllTasks(null, pageable);
 
-        // Assert
-        assertEquals(2, tasks.size());
-        assertEquals(1L, tasks.get(0).getId());
-        assertEquals("Task 1", tasks.get(0).getTitle());
-        assertEquals(2L, tasks.get(1).getId());
-        assertEquals("Task 2", tasks.get(1).getTitle());
-        verify(taskRepository, times(1)).findAll();
+        assertEquals(2, result.getContent().size());
+        assertEquals(1L, result.getContent().get(0).getId());
+        assertEquals("Task 1", result.getContent().get(0).getTitle());
+        verify(taskRepository).findAll(pageable);
+        verify(taskRepository, never()).findByStatus(any(), any());
     }
 
     @Test
-    void shouldReturnEmptyListWhenNoTasks() {
-        // Arrange
-        when(taskRepository.findAll()).thenReturn(Collections.emptyList());
+    void shouldReturnEmptyPageWhenNoTasks() {
+        Pageable pageable = PageRequest.of(0, 10);
 
-        // Act
-        List<Task> tasks = taskService.getAllTasks();
+        when(taskRepository.findAll(pageable)).thenReturn(new PageImpl<>(Collections.emptyList()));
 
-        // Assert
-        assertNotNull(tasks);
-        assertTrue(tasks.isEmpty());
-        verify(taskRepository, times(1)).findAll();
+        Page<Task> result = taskService.getAllTasks(null, pageable);
+
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
+        verify(taskRepository).findAll(pageable);
     }
 
-    //  createTask
+    @Test
+    void shouldReturnTasksFilteredByStatus() {
+        Task task = new Task(1L, "Todo Task");
+        task.setStatus(TaskStatus.TODO);
+        Pageable pageable = PageRequest.of(0, 10);
+
+        when(taskRepository.findByStatus(TaskStatus.TODO, pageable))
+                .thenReturn(new PageImpl<>(List.of(task)));
+
+        Page<Task> result = taskService.getAllTasks(TaskStatus.TODO, pageable);
+
+        assertEquals(1, result.getContent().size());
+        assertEquals(TaskStatus.TODO, result.getContent().get(0).getStatus());
+        verify(taskRepository).findByStatus(TaskStatus.TODO, pageable);
+        verify(taskRepository, never()).findAll(any(Pageable.class));
+    }
+
+    // --- getTaskById ---
+
+    @Test
+    void shouldReturnTaskById() {
+        Task task = new Task(1L, "Task 1");
+
+        when(taskRepository.findById(1L)).thenReturn(Optional.of(task));
+
+        Task result = taskService.getTaskById(1L);
+
+        assertNotNull(result);
+        assertEquals(1L, result.getId());
+        assertEquals("Task 1", result.getTitle());
+        verify(taskRepository).findById(1L);
+    }
+
+    @Test
+    void shouldThrowTaskNotFoundExceptionWhenTaskDoesNotExist() {
+        when(taskRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThrows(TaskNotFoundException.class, () -> taskService.getTaskById(99L));
+        verify(taskRepository).findById(99L);
+    }
+
+    // --- createTask ---
 
     @Test
     void shouldCreateTask() {
-        // Arrange
         Task task = new Task(null, "New Task");
         Task savedTask = new Task(1L, "New Task");
 
         when(taskRepository.save(task)).thenReturn(savedTask);
 
-        // Act
         Task result = taskService.createTask(task);
 
-        // Assert
         assertNotNull(result);
         assertEquals(1L, result.getId());
         assertEquals("New Task", result.getTitle());
@@ -83,54 +123,106 @@ class TaskServiceTest {
 
     @Test
     void shouldCreateTaskWithAllFields() {
-        // Arrange
         Task task = new Task(null, "Full Task");
         task.setDescription("A description");
-        task.setStatus("TODO");
+        task.setStatus(TaskStatus.TODO);
 
         Task savedTask = new Task(2L, "Full Task");
         savedTask.setDescription("A description");
-        savedTask.setStatus("TODO");
+        savedTask.setStatus(TaskStatus.TODO);
 
         when(taskRepository.save(task)).thenReturn(savedTask);
 
-        // Act
         Task result = taskService.createTask(task);
 
-        // Assert
         assertNotNull(result);
         assertEquals(2L, result.getId());
         assertEquals("Full Task", result.getTitle());
         assertEquals("A description", result.getDescription());
-        assertEquals("TODO", result.getStatus());
+        assertEquals(TaskStatus.TODO, result.getStatus());
         verify(taskRepository).save(task);
     }
 
-    //  deleteTask
+    // --- updateTask ---
+
+    @Test
+    void shouldUpdateTask() {
+        Task existing = new Task(1L, "Old Title");
+        existing.setStatus(TaskStatus.TODO);
+
+        Task update = new Task(null, "New Title");
+        update.setStatus(TaskStatus.IN_PROGRESS);
+
+        when(taskRepository.findById(1L)).thenReturn(Optional.of(existing));
+        when(taskRepository.save(existing)).thenReturn(existing);
+
+        Task result = taskService.updateTask(1L, update);
+
+        assertEquals("New Title", result.getTitle());
+        assertEquals(TaskStatus.IN_PROGRESS, result.getStatus());
+        verify(taskRepository).findById(1L);
+        verify(taskRepository).save(existing);
+    }
+
+    @Test
+    void shouldThrowWhenUpdatingNonExistentTask() {
+        when(taskRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThrows(TaskNotFoundException.class, () -> taskService.updateTask(99L, new Task()));
+        verify(taskRepository).findById(99L);
+        verify(taskRepository, never()).save(any());
+    }
+
+    // --- patchTask ---
+
+    @Test
+    void shouldPatchOnlyProvidedFields() {
+        Task existing = new Task(1L, "Existing Title");
+        existing.setStatus(TaskStatus.TODO);
+
+        Task patch = new Task(null, null);
+        patch.setStatus(TaskStatus.DONE);
+
+        when(taskRepository.findById(1L)).thenReturn(Optional.of(existing));
+        when(taskRepository.save(existing)).thenReturn(existing);
+
+        Task result = taskService.patchTask(1L, patch);
+
+        assertEquals("Existing Title", result.getTitle());
+        assertEquals(TaskStatus.DONE, result.getStatus());
+        verify(taskRepository).findById(1L);
+        verify(taskRepository).save(existing);
+    }
+
+    @Test
+    void shouldThrowWhenPatchingNonExistentTask() {
+        when(taskRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThrows(TaskNotFoundException.class, () -> taskService.patchTask(99L, new Task()));
+        verify(taskRepository).findById(99L);
+        verify(taskRepository, never()).save(any());
+    }
+
+    // --- deleteTask ---
 
     @Test
     void shouldDeleteTask() {
-        // Arrange
         Long taskId = 1L;
         when(taskRepository.existsById(taskId)).thenReturn(true);
 
-        // Act
         taskService.deleteTask(taskId);
 
-        // Assert
-        verify(taskRepository, times(1)).existsById(taskId);
-        verify(taskRepository, times(1)).deleteById(taskId);
+        verify(taskRepository).existsById(taskId);
+        verify(taskRepository).deleteById(taskId);
     }
 
     @Test
     void shouldThrowTaskNotFoundExceptionWhenDeletingNonExistentTask() {
-        // Arrange
         Long nonExistentId = 99L;
         when(taskRepository.existsById(nonExistentId)).thenReturn(false);
 
-        // Act & Assert
         assertThrows(TaskNotFoundException.class, () -> taskService.deleteTask(nonExistentId));
-        verify(taskRepository, times(1)).existsById(nonExistentId);
+        verify(taskRepository).existsById(nonExistentId);
         verify(taskRepository, never()).deleteById(nonExistentId);
     }
 }

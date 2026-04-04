@@ -2,7 +2,6 @@ package com.javaproject.model;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 @Entity
@@ -18,8 +17,8 @@ public class Task {
     @Size(max = 500, message = "Description must not exceed 500 characters")
     private String description;
 
-    @Pattern(regexp = "TODO|IN_PROGRESS|DONE", message = "Status must be TODO, IN_PROGRESS, or DONE")
-    private String status;
+    @Enumerated(EnumType.STRING)
+    private TaskStatus status;
 
     // Constructor vide (obligatoire)
     public Task() {}
@@ -56,11 +55,11 @@ public class Task {
         this.description = description;
     }
 
-    public String getStatus() {
+    public TaskStatus getStatus() {
         return status;
     }
 
-    public void setStatus(String status) {
+    public void setStatus(TaskStatus status) {
         this.status = status;
     }
 }
