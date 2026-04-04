@@ -16,6 +16,16 @@ public class Task {
     // Constructor vide (obligatoire)
     public Task() {}
 
+    public Task(long id, String title) {
+        this.id = id;
+        this.title = title;
+    }
+
+    public Task(Long id, String title) {
+        this.id = id;
+        this.title = title;
+    }
+
     // Getters & Setters
 
     public Long getId() {
