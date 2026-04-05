@@ -12,3 +12,10 @@ services:
       SPRING_DATA_REDIS_HOST: redis
     depends_on:
       - redis
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - app

@@ -192,6 +192,46 @@ The current implementation uses in-memory buckets (per JVM instance). For distri
 
 ---
 
+## Frontend (React)
+
+A single-page application built with **React 18 + Vite** that consumes the API.
+
+### Pages
+- **Login** — Authenticate with username/password, stores JWT in localStorage
+- **Register** — Create a new account, auto-login after registration
+- **Tasks** — Full task management dashboard
+
+### Features
+- Create, edit, and delete tasks via modal forms
+- Change task status with inline dropdown
+- Filter by status (ALL / TODO / IN_PROGRESS / DONE)
+- Pagination controls
+- Real-time notifications via WebSocket (toast when another user modifies a task)
+- Role-aware UI (delete button only visible to ADMIN users)
+- Responsive design (mobile-friendly)
+
+### Run in Development
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Opens at **http://localhost:5173** (auto-proxies API calls to `localhost:8081`).
+
+### Run with Docker
+
+```bash
+docker compose up --build
+```
+
+- Frontend: **http://localhost:3000**
+- API: **http://localhost:8081**
+- Swagger: **http://localhost:8081/swagger-ui/index.html**
+
+---
+
 ## Features
 
 - **JWT Authentication** — Stateless token-based auth with 24h expiration
@@ -206,6 +246,7 @@ The current implementation uses in-memory buckets (per JVM instance). For distri
 - **Audit Fields** — `createdAt` and `updatedAt` timestamps on all entities, auto-managed via JPA lifecycle callbacks
 - **Redis Caching** — `@Cacheable` on reads, `@CacheEvict` on writes, with configurable TTL (5 min for task lists, 10 min for single tasks)
 - **Rate Limiting** — Bucket4j token bucket algorithm, 10 requests/minute per IP, configurable via properties, returns 429 with `Retry-After` header
+- **React Frontend** — Login/Register, task CRUD, status filtering, pagination, real-time updates via WebSocket
 - **WebSocket (STOMP)** — Real-time task notifications on create, update, and delete via `/topic/tasks`
 - **Proper HTTP Status Codes** — 201 Created, 204 No Content, 400 Bad Request, 401 Unauthorized, 403 Forbidden, 404 Not Found, 429 Too Many Requests
 
@@ -219,6 +260,6 @@ The current implementation uses in-memory buckets (per JVM instance). For distri
 - [x] **WebSocket Support** — Real-time task update notifications via STOMP
 - [x] **Redis Caching** — `@Cacheable`/`@CacheEvict` with TTL configuration
 - [x] **Rate Limiting** — Bucket4j token bucket per IP with configurable capacity
-- [ ] **Frontend Client** — React or Angular UI consuming the API
+- [x] **Frontend Client** — React SPA with login, task CRUD, filtering, pagination, and real-time WebSocket updates
 
 ---
