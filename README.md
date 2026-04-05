@@ -70,6 +70,9 @@ cd taskmanager
 ```
 The API starts at **http://localhost:8081**.
 
+### Swagger UI
+Open **http://localhost:8081/swagger-ui/index.html** for interactive API documentation.
+
 ### Access H2 Console
 Navigate to `http://localhost:8081/h2-console` with:
 - **JDBC URL:** `jdbc:h2:mem:testdb`
@@ -97,7 +100,7 @@ Navigate to `http://localhost:8081/h2-console` with:
 
 ## Roadmap
 
-- [ ] **Swagger/OpenAPI Documentation** — Interactive API docs with `springdoc-openapi`
+- [x] **Swagger/OpenAPI Documentation** — Interactive API docs with `springdoc-openapi`
 - [ ] **JWT Authentication** — Spring Security with role-based access control (admin vs. regular user)
 - [ ] **Database Migrations** — Flyway/Liquibase replacing `ddl-auto=update`, with `createdAt`/`updatedAt` audit fields
 - [ ] **WebSocket Support** — Real-time task update notifications
