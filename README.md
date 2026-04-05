@@ -22,6 +22,7 @@ A production-ready Task Management REST API built with **Spring Boot 3**, **Java
 | Spring Security        | Authentication & Authorization         |
 | JWT (jjwt 0.12.5)      | Stateless token-based authentication   |
 | Spring Data JPA        | ORM & Data Access                      |
+| Flyway                 | Database migrations & schema versioning|
 | H2 Database            | In-memory database                     |
 | springdoc-openapi       | Swagger UI & OpenAPI 3 documentation   |
 | Bean Validation        | Input validation (`@NotBlank`, `@Size`) |
@@ -85,6 +86,8 @@ Base URL: `http://localhost:8081/tasks` (all require JWT authentication)
 - **Global Exception Handling** — `@RestControllerAdvice` catches `TaskNotFoundException`, validation errors, malformed JSON, and type mismatches
 - **Filtering** — Filter tasks by status enum (`TODO`, `IN_PROGRESS`, `DONE`)
 - **Pagination** — Spring Data `Pageable` with page/size parameters
+- **Database Migrations** — Flyway-managed schema with versioned SQL scripts (no `ddl-auto=update`)
+- **Audit Fields** — `createdAt` and `updatedAt` timestamps on all entities, auto-managed via JPA lifecycle callbacks
 - **Proper HTTP Status Codes** — 201 Created, 204 No Content, 400 Bad Request, 401 Unauthorized, 403 Forbidden, 404 Not Found
 
 ---
@@ -93,7 +96,7 @@ Base URL: `http://localhost:8081/tasks` (all require JWT authentication)
 
 - [x] **Swagger/OpenAPI Documentation** — Interactive API docs with `springdoc-openapi`
 - [x] **JWT Authentication** — Spring Security with role-based access control (admin vs. regular user)
-- [ ] **Database Migrations** — Flyway/Liquibase replacing `ddl-auto=update`, with `createdAt`/`updatedAt` audit fields
+- [x] **Database Migrations** — Flyway replacing `ddl-auto=update`, with `createdAt`/`updatedAt` audit fields
 - [ ] **WebSocket Support** — Real-time task update notifications
 - [ ] **Redis Caching** — Cache frequently accessed data
 - [ ] **Rate Limiting** — Protect API from abuse

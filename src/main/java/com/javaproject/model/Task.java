@@ -5,6 +5,8 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Schema(description = "Task entity representing a to-do item")
 public class Task {
@@ -25,6 +27,25 @@ public class Task {
     @Enumerated(EnumType.STRING)
     @Schema(description = "Current status of the task", example = "TODO")
     private TaskStatus status;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    @Schema(description = "Timestamp when the task was created", accessMode = Schema.AccessMode.READ_ONLY)
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at", nullable = false)
+    @Schema(description = "Timestamp when the task was last updated", accessMode = Schema.AccessMode.READ_ONLY)
+    private LocalDateTime updatedAt;
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 
     // Constructor vide (obligatoire)
     public Task() {}
@@ -67,5 +88,13 @@ public class Task {
 
     public void setStatus(TaskStatus status) {
         this.status = status;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
     }
 }

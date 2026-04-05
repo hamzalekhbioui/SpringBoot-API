@@ -74,6 +74,12 @@
             <version>2.5.0</version>
         </dependency>
 
+        <!-- Flyway (Database Migrations) -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+
         <!-- Spring Security -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
