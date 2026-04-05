@@ -23,6 +23,7 @@ A production-ready Task Management REST API built with **Spring Boot 3**, **Java
 | JWT (jjwt 0.12.5)      | Stateless token-based authentication   |
 | Spring Data JPA        | ORM & Data Access                      |
 | Flyway                 | Database migrations & schema versioning|
+| Redis                  | Caching layer with TTL support         |
 | WebSocket (STOMP)      | Real-time task update notifications    |
 | H2 Database            | In-memory database                     |
 | springdoc-openapi       | Swagger UI & OpenAPI 3 documentation   |
@@ -134,6 +135,7 @@ stompClient.connect({}, () => {
 - **Pagination** — Spring Data `Pageable` with page/size parameters
 - **Database Migrations** — Flyway-managed schema with versioned SQL scripts (no `ddl-auto=update`)
 - **Audit Fields** — `createdAt` and `updatedAt` timestamps on all entities, auto-managed via JPA lifecycle callbacks
+- **Redis Caching** — `@Cacheable` on reads, `@CacheEvict` on writes, with configurable TTL (5 min for task lists, 10 min for single tasks)
 - **WebSocket (STOMP)** — Real-time task notifications on create, update, and delete via `/topic/tasks`
 - **Proper HTTP Status Codes** — 201 Created, 204 No Content, 400 Bad Request, 401 Unauthorized, 403 Forbidden, 404 Not Found
 
@@ -145,7 +147,7 @@ stompClient.connect({}, () => {
 - [x] **JWT Authentication** — Spring Security with role-based access control (admin vs. regular user)
 - [x] **Database Migrations** — Flyway replacing `ddl-auto=update`, with `createdAt`/`updatedAt` audit fields
 - [x] **WebSocket Support** — Real-time task update notifications via STOMP
-- [ ] **Redis Caching** — Cache frequently accessed data
+- [x] **Redis Caching** — `@Cacheable`/`@CacheEvict` with TTL configuration
 - [ ] **Rate Limiting** — Protect API from abuse
 - [ ] **Frontend Client** — React or Angular UI consuming the API
 

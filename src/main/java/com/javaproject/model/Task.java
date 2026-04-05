@@ -5,11 +5,14 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
+import java.io.Serializable;
 import java.time.LocalDateTime;
 
 @Entity
 @Schema(description = "Task entity representing a to-do item")
-public class Task {
+public class Task implements Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
