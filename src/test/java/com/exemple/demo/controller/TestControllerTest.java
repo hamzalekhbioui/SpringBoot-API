@@ -8,6 +8,7 @@ import com.javaproject.model.Task;
 import com.javaproject.model.TaskStatus;
 import com.javaproject.security.JwtAuthenticationFilter;
 import com.javaproject.security.JwtService;
+import com.javaproject.security.RateLimitingFilter;
 import com.javaproject.service.TaskService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,7 +31,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(TaskController.class)
-@Import({SecurityConfig.class, JwtAuthenticationFilter.class})
+@Import({SecurityConfig.class, JwtAuthenticationFilter.class, RateLimitingFilter.class})
 class TaskControllerTest {
 
     @Autowired

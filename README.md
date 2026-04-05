@@ -24,6 +24,7 @@ A production-ready Task Management REST API built with **Spring Boot 3**, **Java
 | Spring Data JPA        | ORM & Data Access                      |
 | Flyway                 | Database migrations & schema versioning|
 | Redis                  | Caching layer with TTL support         |
+| Bucket4j               | Token bucket rate limiting per IP      |
 | WebSocket (STOMP)      | Real-time task update notifications    |
 | H2 Database            | In-memory database                     |
 | springdoc-openapi       | Swagger UI & OpenAPI 3 documentation   |
@@ -123,6 +124,74 @@ stompClient.connect({}, () => {
 
 ---
 
+## Rate Limiting
+
+The API uses **Bucket4j** with the **token bucket algorithm** to limit requests per IP address.
+
+### How It Works
+
+Each IP address gets a bucket with a fixed number of tokens (default: 10). Every request consumes one token. Tokens refill at a steady rate (default: 10 tokens per minute). When the bucket is empty, the request is rejected with `429 Too Many Requests`.
+
+```
+Request #1  → bucket: 9/10  → 200 OK
+Request #2  → bucket: 8/10  → 200 OK
+...
+Request #10 → bucket: 0/10  → 200 OK
+Request #11 → bucket: 0/10  → 429 Too Many Requests (Retry-After: 42)
+```
+
+### Configuration (`application.properties`)
+
+```properties
+rate-limit.capacity=10          # Max requests per window
+rate-limit.refill-minutes=1     # Window duration in minutes
+```
+
+### Response Headers
+
+Every response includes rate limit info:
+
+| Header                   | Description                              |
+|--------------------------|------------------------------------------|
+| `X-Rate-Limit-Remaining` | Tokens left in the current window        |
+| `Retry-After`            | Seconds to wait (only on 429 responses)  |
+
+### 429 Response Example
+
+```json
+{
+  "status": 429,
+  "message": "Rate limit exceeded. Try again in 42 seconds.",
+  "errors": null
+}
+```
+
+### Testing with Postman
+
+1. Send 10 rapid requests to `GET /tasks` (with a valid JWT)
+2. The 11th request returns **429 Too Many Requests**
+3. Check the `X-Rate-Limit-Remaining` header decreasing with each request
+4. Wait for the `Retry-After` duration, then requests work again
+
+Or test with curl in a loop:
+```bash
+for i in $(seq 1 12); do
+  echo "Request $i: $(curl -s -o /dev/null -w '%{http_code}' \
+    -H 'Authorization: Bearer <your-token>' \
+    http://localhost:8081/tasks)"
+done
+```
+
+### Excluded Endpoints
+
+Swagger UI, API docs, H2 console, and WebSocket are **not rate-limited**.
+
+### Distributed Rate Limiting
+
+The current implementation uses in-memory buckets (per JVM instance). For distributed deployments with multiple app instances, you can upgrade to `bucket4j-redis` to store bucket state in Redis — ensuring consistent rate limits across all instances.
+
+---
+
 ## Features
 
 - **JWT Authentication** — Stateless token-based auth with 24h expiration
@@ -136,8 +205,9 @@ stompClient.connect({}, () => {
 - **Database Migrations** — Flyway-managed schema with versioned SQL scripts (no `ddl-auto=update`)
 - **Audit Fields** — `createdAt` and `updatedAt` timestamps on all entities, auto-managed via JPA lifecycle callbacks
 - **Redis Caching** — `@Cacheable` on reads, `@CacheEvict` on writes, with configurable TTL (5 min for task lists, 10 min for single tasks)
+- **Rate Limiting** — Bucket4j token bucket algorithm, 10 requests/minute per IP, configurable via properties, returns 429 with `Retry-After` header
 - **WebSocket (STOMP)** — Real-time task notifications on create, update, and delete via `/topic/tasks`
-- **Proper HTTP Status Codes** — 201 Created, 204 No Content, 400 Bad Request, 401 Unauthorized, 403 Forbidden, 404 Not Found
+- **Proper HTTP Status Codes** — 201 Created, 204 No Content, 400 Bad Request, 401 Unauthorized, 403 Forbidden, 404 Not Found, 429 Too Many Requests
 
 ---
 
@@ -148,7 +218,7 @@ stompClient.connect({}, () => {
 - [x] **Database Migrations** — Flyway replacing `ddl-auto=update`, with `createdAt`/`updatedAt` audit fields
 - [x] **WebSocket Support** — Real-time task update notifications via STOMP
 - [x] **Redis Caching** — `@Cacheable`/`@CacheEvict` with TTL configuration
-- [ ] **Rate Limiting** — Protect API from abuse
+- [x] **Rate Limiting** — Bucket4j token bucket per IP with configurable capacity
 - [ ] **Frontend Client** — React or Angular UI consuming the API
 
 ---
