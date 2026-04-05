@@ -1,6 +1,6 @@
 # Task Manager REST API
 
-A production-ready Task Management REST API built with **Spring Boot 3**, **Java 21**, and **Spring Data JPA**. Designed with clean layered architecture, comprehensive error handling, validation, filtering, and pagination.
+A production-ready Task Management REST API built with **Spring Boot 3**, **Java 21**, and **Spring Data JPA**. Features JWT authentication, role-based access control, Swagger docs, comprehensive error handling, validation, filtering, and pagination.
 
 ---
 
@@ -11,48 +11,77 @@ A production-ready Task Management REST API built with **Spring Boot 3**, **Java
 │   Client     │────▶│  Controller  │────▶│   Service    │────▶│  Repository  │
 │  (REST)      │◀────│  (Validation)│◀────│  (Business)  │◀────│  (JPA/H2)    │
 └──────────────┘     └──────────────┘     └──────────────┘     └──────────────┘
-                            │
-                     ┌──────▼───────┐
-                     │   Global     │
-                     │  Exception   │
-                     │   Handler    │
-                     └──────────────┘
+        │                   │
+        │            ┌──────▼───────┐
+        │            │   Global     │
+        │            │  Exception   │
+        │            │   Handler    │
+        │            └──────────────┘
+        │
+  ┌─────▼──────┐     ┌──────────────┐     ┌──────────────┐
+  │ JWT Filter │────▶│  Security    │────▶│  JWT Service  │
+  │ (Auth)     │     │  Config      │     │  (Token Gen)  │
+  └────────────┘     └──────────────┘     └──────────────┘
 ```
 
 **Layers:**
 - **Controller** — REST endpoints, request validation, HTTP status mapping
 - **Service** — Business logic, partial/full update handling
 - **Repository** — Data access via Spring Data JPA with custom query methods
+- **Security** — JWT authentication filter, role-based authorization
 - **Exception Handling** — `@RestControllerAdvice` with structured error responses
 
 ---
 
 ## Tech Stack
 
-| Technology         | Purpose                          |
-|--------------------|----------------------------------|
-| Java 21            | Language                         |
-| Spring Boot 3.2.5  | Framework                        |
-| Spring Data JPA    | ORM & Data Access                |
-| H2 Database        | In-memory database               |
-| Bean Validation    | Input validation (`@NotBlank`, `@Size`) |
-| Lombok             | Boilerplate reduction            |
-| JUnit 5 + Mockito  | Unit & integration testing       |
+| Technology             | Purpose                                |
+|------------------------|----------------------------------------|
+| Java 21                | Language                               |
+| Spring Boot 3.2.5      | Framework                              |
+| Spring Security        | Authentication & Authorization         |
+| JWT (jjwt 0.12.5)      | Stateless token-based authentication   |
+| Spring Data JPA        | ORM & Data Access                      |
+| H2 Database            | In-memory database                     |
+| springdoc-openapi       | Swagger UI & OpenAPI 3 documentation   |
+| Bean Validation        | Input validation (`@NotBlank`, `@Size`) |
+| Lombok                 | Boilerplate reduction                  |
+| JUnit 5 + Mockito      | Unit & integration testing             |
 
 ---
 
-## API Endpoints
+## Authentication
 
-Base URL: `http://localhost:8081/tasks`
+The API uses **JWT (JSON Web Tokens)** for stateless authentication with **role-based access control**.
 
-| Method   | Endpoint      | Description             | Status Codes       |
-|----------|---------------|-------------------------|-------------------|
-| `GET`    | `/tasks`      | List all tasks (paginated, filterable) | 200, 400 |
-| `GET`    | `/tasks/{id}` | Get task by ID          | 200, 404           |
-| `POST`   | `/tasks`      | Create a new task       | 201, 400           |
-| `PUT`    | `/tasks/{id}` | Full update             | 200, 400, 404      |
-| `PATCH`  | `/tasks/{id}` | Partial update          | 200, 404           |
-| `DELETE` | `/tasks/{id}` | Delete a task           | 204, 404           |
+### Roles
+| Role    | Permissions                                    |
+|---------|------------------------------------------------|
+| `USER`  | Create, read, update tasks                     |
+| `ADMIN` | Full access (create, read, update, **delete**)  |
+
+### Auth Endpoints
+
+| Method | Endpoint              | Description              | Auth Required |
+|--------|-----------------------|--------------------------|---------------|
+| `POST` | `/auth/register`      | Register as USER         | No            |
+| `POST` | `/auth/register/admin`| Register as ADMIN        | No            |
+| `POST` | `/auth/login`         | Login & get JWT token    | No            |
+
+
+
+## Task Endpoints
+
+Base URL: `http://localhost:8081/tasks` (all require JWT authentication)
+
+| Method   | Endpoint      | Description                       | Role Required | Status Codes       |
+|----------|---------------|-----------------------------------|---------------|--------------------|
+| `GET`    | `/tasks`      | List all tasks (paginated, filterable) | USER, ADMIN | 200, 400, 401 |
+| `GET`    | `/tasks/{id}` | Get task by ID                    | USER, ADMIN   | 200, 401, 404      |
+| `POST`   | `/tasks`      | Create a new task                 | USER, ADMIN   | 201, 400, 401      |
+| `PUT`    | `/tasks/{id}` | Full update                       | USER, ADMIN   | 200, 400, 401, 404 |
+| `PATCH`  | `/tasks/{id}` | Partial update                    | USER, ADMIN   | 200, 401, 404      |
+| `DELETE` | `/tasks/{id}` | Delete a task                     | **ADMIN only**| 204, 401, 403, 404 |
 
 ### Query Parameters (GET /tasks)
 
@@ -65,46 +94,29 @@ Base URL: `http://localhost:8081/tasks`
 ---
 
 
-cd taskmanager
-./mvnw spring-boot:run
-```
-The API starts at **http://localhost:8081**.
-
-### Swagger UI
-Open **http://localhost:8081/swagger-ui/index.html** for interactive API documentation.
-
-### Access H2 Console
-Navigate to `http://localhost:8081/h2-console` with:
-- **JDBC URL:** `jdbc:h2:mem:testdb`
-- **Username:** `sa`
-- **Password:** *(empty)*
-
-### Run Tests
-```bash
-./mvnw test
-```
-**Test coverage:** 36 tests (21 controller + 15 service) covering all endpoints, validation, error handling, and edge cases.
-
----
 
 ## Features
 
+- **JWT Authentication** — Stateless token-based auth with 24h expiration
+- **Role-Based Access Control** — USER and ADMIN roles with endpoint-level authorization
 - **Full CRUD** — Create, Read, Update (PUT & PATCH), Delete
+- **Swagger/OpenAPI** — Interactive API docs with JWT bearer auth support
 - **Validation** — `@NotBlank` on title, `@Size(max=500)` on description, structured error responses
 - **Global Exception Handling** — `@RestControllerAdvice` catches `TaskNotFoundException`, validation errors, malformed JSON, and type mismatches
 - **Filtering** — Filter tasks by status enum (`TODO`, `IN_PROGRESS`, `DONE`)
 - **Pagination** — Spring Data `Pageable` with page/size parameters
-- **Proper HTTP Status Codes** — 201 for creation, 204 for deletion, 404 for not found, 400 for validation errors
+- **Proper HTTP Status Codes** — 201 Created, 204 No Content, 400 Bad Request, 401 Unauthorized, 403 Forbidden, 404 Not Found
 
 ---
 
 ## Roadmap
 
 - [x] **Swagger/OpenAPI Documentation** — Interactive API docs with `springdoc-openapi`
-- [ ] **JWT Authentication** — Spring Security with role-based access control (admin vs. regular user)
+- [x] **JWT Authentication** — Spring Security with role-based access control (admin vs. regular user)
 - [ ] **Database Migrations** — Flyway/Liquibase replacing `ddl-auto=update`, with `createdAt`/`updatedAt` audit fields
 - [ ] **WebSocket Support** — Real-time task update notifications
 - [ ] **Redis Caching** — Cache frequently accessed data
 - [ ] **Rate Limiting** — Protect API from abuse
 - [ ] **Frontend Client** — React or Angular UI consuming the API
 
+---

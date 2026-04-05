@@ -1,17 +1,23 @@
 package com.exemple.demo.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.javaproject.config.SecurityConfig;
 import com.javaproject.controller.TaskController;
 import com.javaproject.exception.TaskNotFoundException;
 import com.javaproject.model.Task;
 import com.javaproject.model.TaskStatus;
+import com.javaproject.security.JwtAuthenticationFilter;
+import com.javaproject.security.JwtService;
 import com.javaproject.service.TaskService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Collections;
@@ -19,10 +25,12 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(TaskController.class)
+@Import({SecurityConfig.class, JwtAuthenticationFilter.class})
 class TaskControllerTest {
 
     @Autowired
@@ -31,12 +39,19 @@ class TaskControllerTest {
     @MockBean
     private TaskService taskService;
 
+    @MockBean
+    private JwtService jwtService;
+
+    @MockBean
+    private UserDetailsService userDetailsService;
+
     @Autowired
     private ObjectMapper objectMapper;
 
     // --- GET /tasks ---
 
     @Test
+    @WithMockUser
     void shouldReturnAllTasks() throws Exception {
         Task task1 = new Task(1L, "Task 1");
         Task task2 = new Task(2L, "Task 2");
@@ -56,6 +71,7 @@ class TaskControllerTest {
     }
 
     @Test
+    @WithMockUser
     void shouldReturnEmptyListWhenNoTasks() throws Exception {
         when(taskService.getAllTasks(isNull(), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(Collections.emptyList()));
@@ -68,6 +84,7 @@ class TaskControllerTest {
     }
 
     @Test
+    @WithMockUser
     void shouldFilterTasksByStatus() throws Exception {
         Task task = new Task(1L, "Todo Task");
         task.setStatus(TaskStatus.TODO);
@@ -84,6 +101,7 @@ class TaskControllerTest {
     }
 
     @Test
+    @WithMockUser
     void shouldReturn400WhenFilterStatusIsInvalid() throws Exception {
         mockMvc.perform(get("/tasks").param("status", "INVALID"))
                 .andExpect(status().isBadRequest())
@@ -93,6 +111,7 @@ class TaskControllerTest {
     // --- GET /tasks/{id} ---
 
     @Test
+    @WithMockUser
     void shouldReturnTaskById() throws Exception {
         Task task = new Task(1L, "Task 1");
 
@@ -107,6 +126,7 @@ class TaskControllerTest {
     }
 
     @Test
+    @WithMockUser
     void shouldReturn404WhenTaskNotFound() throws Exception {
         when(taskService.getTaskById(99L)).thenThrow(new TaskNotFoundException(99L));
 
@@ -121,6 +141,7 @@ class TaskControllerTest {
     // --- POST /tasks ---
 
     @Test
+    @WithMockUser
     void shouldCreateTask() throws Exception {
         Task task = new Task(null, "New Task");
         Task savedTask = new Task(1L, "New Task");
@@ -128,6 +149,7 @@ class TaskControllerTest {
         when(taskService.createTask(any(Task.class))).thenReturn(savedTask);
 
         mockMvc.perform(post("/tasks")
+                        .with(csrf())
                         .contentType("application/json")
                         .content(objectMapper.writeValueAsString(task)))
                 .andExpect(status().isCreated())
@@ -138,6 +160,7 @@ class TaskControllerTest {
     }
 
     @Test
+    @WithMockUser
     void shouldCreateTaskWithAllFields() throws Exception {
         Task task = new Task(null, "Full Task");
         task.setDescription("A description");
@@ -150,6 +173,7 @@ class TaskControllerTest {
         when(taskService.createTask(any(Task.class))).thenReturn(savedTask);
 
         mockMvc.perform(post("/tasks")
+                        .with(csrf())
                         .contentType("application/json")
                         .content(objectMapper.writeValueAsString(task)))
                 .andExpect(status().isCreated())
@@ -162,8 +186,10 @@ class TaskControllerTest {
     }
 
     @Test
+    @WithMockUser
     void shouldReturn400WhenCreateTaskBodyIsInvalid() throws Exception {
         mockMvc.perform(post("/tasks")
+                        .with(csrf())
                         .contentType("application/json")
                         .content("not-valid-json"))
                 .andExpect(status().isBadRequest());
@@ -172,10 +198,12 @@ class TaskControllerTest {
     }
 
     @Test
+    @WithMockUser
     void shouldReturn400WhenTitleIsBlank() throws Exception {
         String body = "{\"title\": \"\", \"status\": \"TODO\"}";
 
         mockMvc.perform(post("/tasks")
+                        .with(csrf())
                         .contentType("application/json")
                         .content(body))
                 .andExpect(status().isBadRequest())
@@ -186,10 +214,12 @@ class TaskControllerTest {
     }
 
     @Test
+    @WithMockUser
     void shouldReturn400WhenStatusIsInvalid() throws Exception {
         String body = "{\"title\": \"My Task\", \"status\": \"INVALID\"}";
 
         mockMvc.perform(post("/tasks")
+                        .with(csrf())
                         .contentType("application/json")
                         .content(body))
                 .andExpect(status().isBadRequest())
@@ -199,11 +229,13 @@ class TaskControllerTest {
     }
 
     @Test
+    @WithMockUser
     void shouldReturn400WhenDescriptionIsTooLong() throws Exception {
         String longDescription = "a".repeat(501);
         String body = "{\"title\": \"My Task\", \"description\": \"" + longDescription + "\"}";
 
         mockMvc.perform(post("/tasks")
+                        .with(csrf())
                         .contentType("application/json")
                         .content(body))
                 .andExpect(status().isBadRequest())
@@ -216,6 +248,7 @@ class TaskControllerTest {
     // --- PUT /tasks/{id} ---
 
     @Test
+    @WithMockUser
     void shouldUpdateTask() throws Exception {
         Task updatedTask = new Task(1L, "Updated Task");
         updatedTask.setStatus(TaskStatus.IN_PROGRESS);
@@ -223,6 +256,7 @@ class TaskControllerTest {
         when(taskService.updateTask(eq(1L), any(Task.class))).thenReturn(updatedTask);
 
         mockMvc.perform(put("/tasks/1")
+                        .with(csrf())
                         .contentType("application/json")
                         .content(objectMapper.writeValueAsString(updatedTask)))
                 .andExpect(status().isOk())
@@ -233,6 +267,7 @@ class TaskControllerTest {
     }
 
     @Test
+    @WithMockUser
     void shouldReturn404WhenUpdatingNonExistentTask() throws Exception {
         Task task = new Task(null, "Task");
 
@@ -240,6 +275,7 @@ class TaskControllerTest {
                 .thenThrow(new TaskNotFoundException(99L));
 
         mockMvc.perform(put("/tasks/99")
+                        .with(csrf())
                         .contentType("application/json")
                         .content(objectMapper.writeValueAsString(task)))
                 .andExpect(status().isNotFound())
@@ -251,6 +287,7 @@ class TaskControllerTest {
     // --- PATCH /tasks/{id} ---
 
     @Test
+    @WithMockUser
     void shouldPatchTask() throws Exception {
         Task patch = new Task(null, null);
         patch.setStatus(TaskStatus.DONE);
@@ -261,6 +298,7 @@ class TaskControllerTest {
         when(taskService.patchTask(eq(1L), any(Task.class))).thenReturn(patched);
 
         mockMvc.perform(patch("/tasks/1")
+                        .with(csrf())
                         .contentType("application/json")
                         .content("{\"status\": \"DONE\"}"))
                 .andExpect(status().isOk())
@@ -271,11 +309,13 @@ class TaskControllerTest {
     }
 
     @Test
+    @WithMockUser
     void shouldReturn404WhenPatchingNonExistentTask() throws Exception {
         when(taskService.patchTask(eq(99L), any(Task.class)))
                 .thenThrow(new TaskNotFoundException(99L));
 
         mockMvc.perform(patch("/tasks/99")
+                        .with(csrf())
                         .contentType("application/json")
                         .content("{\"status\": \"DONE\"}"))
                 .andExpect(status().isNotFound())
@@ -287,25 +327,44 @@ class TaskControllerTest {
     // --- DELETE /tasks/{id} ---
 
     @Test
+    @WithMockUser(roles = "ADMIN")
     void shouldDeleteTask() throws Exception {
         Long taskId = 1L;
 
-        mockMvc.perform(delete("/tasks/{id}", taskId))
+        mockMvc.perform(delete("/tasks/{id}", taskId).with(csrf()))
                 .andExpect(status().isNoContent());
 
         verify(taskService).deleteTask(taskId);
     }
 
     @Test
+    @WithMockUser(roles = "ADMIN")
     void shouldReturn404WhenDeletingNonExistentTask() throws Exception {
         Long nonExistentId = 99L;
         doThrow(new TaskNotFoundException(nonExistentId)).when(taskService).deleteTask(nonExistentId);
 
-        mockMvc.perform(delete("/tasks/{id}", nonExistentId))
+        mockMvc.perform(delete("/tasks/{id}", nonExistentId).with(csrf()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404))
                 .andExpect(jsonPath("$.message").value("Task not found with id: 99"));
 
         verify(taskService).deleteTask(nonExistentId);
+    }
+
+    // --- Security Tests ---
+
+    @Test
+    void shouldReturn401WhenNotAuthenticated() throws Exception {
+        mockMvc.perform(get("/tasks"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUser(roles = "USER")
+    void shouldReturn403WhenUserTriesToDelete() throws Exception {
+        mockMvc.perform(delete("/tasks/1").with(csrf()))
+                .andExpect(status().isForbidden());
+
+        verify(taskService, never()).deleteTask(any());
     }
 }
