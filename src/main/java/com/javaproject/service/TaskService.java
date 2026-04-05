@@ -1,5 +1,6 @@
 package com.javaproject.service;
 
+import com.javaproject.dto.TaskEvent;
 import com.javaproject.exception.TaskNotFoundException;
 import com.javaproject.model.Task;
 import com.javaproject.model.TaskStatus;
@@ -12,9 +13,11 @@ import org.springframework.stereotype.Service;
 public class TaskService {
 
     private final TaskRepository taskRepository;
+    private final TaskEventService taskEventService;
 
-    public TaskService(TaskRepository taskRepository) {
+    public TaskService(TaskRepository taskRepository, TaskEventService taskEventService) {
         this.taskRepository = taskRepository;
+        this.taskEventService = taskEventService;
     }
 
     public Page<Task> getAllTasks(TaskStatus status, Pageable pageable) {
@@ -30,7 +33,9 @@ public class TaskService {
     }
 
     public Task createTask(Task task) {
-        return taskRepository.save(task);
+        Task saved = taskRepository.save(task);
+        taskEventService.broadcast(TaskEvent.Action.CREATED, saved);
+        return saved;
     }
 
     public Task updateTask(Long id, Task task) {
@@ -39,7 +44,9 @@ public class TaskService {
         existing.setTitle(task.getTitle());
         existing.setDescription(task.getDescription());
         existing.setStatus(task.getStatus());
-        return taskRepository.save(existing);
+        Task saved = taskRepository.save(existing);
+        taskEventService.broadcast(TaskEvent.Action.UPDATED, saved);
+        return saved;
     }
 
     public Task patchTask(Long id, Task task) {
@@ -48,13 +55,15 @@ public class TaskService {
         if (task.getTitle() != null) existing.setTitle(task.getTitle());
         if (task.getDescription() != null) existing.setDescription(task.getDescription());
         if (task.getStatus() != null) existing.setStatus(task.getStatus());
-        return taskRepository.save(existing);
+        Task saved = taskRepository.save(existing);
+        taskEventService.broadcast(TaskEvent.Action.UPDATED, saved);
+        return saved;
     }
 
     public void deleteTask(Long id) {
-        if (!taskRepository.existsById(id)) {
-            throw new TaskNotFoundException(id);
-        }
+        Task existing = taskRepository.findById(id)
+                .orElseThrow(() -> new TaskNotFoundException(id));
         taskRepository.deleteById(id);
+        taskEventService.broadcast(TaskEvent.Action.DELETED, existing);
     }
 }

@@ -23,6 +23,7 @@ A production-ready Task Management REST API built with **Spring Boot 3**, **Java
 | JWT (jjwt 0.12.5)      | Stateless token-based authentication   |
 | Spring Data JPA        | ORM & Data Access                      |
 | Flyway                 | Database migrations & schema versioning|
+| WebSocket (STOMP)      | Real-time task update notifications    |
 | H2 Database            | In-memory database                     |
 | springdoc-openapi       | Swagger UI & OpenAPI 3 documentation   |
 | Bean Validation        | Input validation (`@NotBlank`, `@Size`) |
@@ -76,6 +77,51 @@ Base URL: `http://localhost:8081/tasks` (all require JWT authentication)
 
 
 
+## WebSocket — Real-Time Updates
+
+The API broadcasts task events over **STOMP WebSocket**. Any connected client receives instant notifications when tasks are created, updated, or deleted.
+
+### Connection
+
+| Property          | Value                              |
+|-------------------|------------------------------------|
+| Endpoint          | `ws://localhost:8081/ws` (SockJS)  |
+| Subscribe topic   | `/topic/tasks`                     |
+
+### Event Payload
+
+```json
+{
+  "action": "CREATED",
+  "task": {
+    "id": 1,
+    "title": "New task",
+    "description": null,
+    "status": "TODO",
+    "createdAt": "2026-04-05T19:30:00",
+    "updatedAt": "2026-04-05T19:30:00"
+  }
+}
+```
+
+**Actions:** `CREATED`, `UPDATED`, `DELETED`
+
+### JavaScript Client Example
+
+```javascript
+const socket = new SockJS('http://localhost:8081/ws');
+const stompClient = Stomp.over(socket);
+
+stompClient.connect({}, () => {
+  stompClient.subscribe('/topic/tasks', (message) => {
+    const event = JSON.parse(message.body);
+    console.log(event.action, event.task);
+  });
+});
+```
+
+---
+
 ## Features
 
 - **JWT Authentication** — Stateless token-based auth with 24h expiration
@@ -88,6 +134,7 @@ Base URL: `http://localhost:8081/tasks` (all require JWT authentication)
 - **Pagination** — Spring Data `Pageable` with page/size parameters
 - **Database Migrations** — Flyway-managed schema with versioned SQL scripts (no `ddl-auto=update`)
 - **Audit Fields** — `createdAt` and `updatedAt` timestamps on all entities, auto-managed via JPA lifecycle callbacks
+- **WebSocket (STOMP)** — Real-time task notifications on create, update, and delete via `/topic/tasks`
 - **Proper HTTP Status Codes** — 201 Created, 204 No Content, 400 Bad Request, 401 Unauthorized, 403 Forbidden, 404 Not Found
 
 ---
@@ -97,7 +144,7 @@ Base URL: `http://localhost:8081/tasks` (all require JWT authentication)
 - [x] **Swagger/OpenAPI Documentation** — Interactive API docs with `springdoc-openapi`
 - [x] **JWT Authentication** — Spring Security with role-based access control (admin vs. regular user)
 - [x] **Database Migrations** — Flyway replacing `ddl-auto=update`, with `createdAt`/`updatedAt` audit fields
-- [ ] **WebSocket Support** — Real-time task update notifications
+- [x] **WebSocket Support** — Real-time task update notifications via STOMP
 - [ ] **Redis Caching** — Cache frequently accessed data
 - [ ] **Rate Limiting** — Protect API from abuse
 - [ ] **Frontend Client** — React or Angular UI consuming the API

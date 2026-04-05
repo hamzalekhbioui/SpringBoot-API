@@ -74,6 +74,12 @@
             <version>2.5.0</version>
         </dependency>
 
+        <!-- WebSocket (STOMP + SockJS) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-websocket</artifactId>
+        </dependency>
+
         <!-- Flyway (Database Migrations) -->
         <dependency>
             <groupId>org.flywaydb</groupId>

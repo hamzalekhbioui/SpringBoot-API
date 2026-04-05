@@ -1,9 +1,11 @@
 package com.exemple.demo.service;
 
+import com.javaproject.dto.TaskEvent;
 import com.javaproject.exception.TaskNotFoundException;
 import com.javaproject.model.Task;
 import com.javaproject.model.TaskStatus;
 import com.javaproject.repository.TaskRepository;
+import com.javaproject.service.TaskEventService;
 import com.javaproject.service.TaskService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,6 +29,9 @@ class TaskServiceTest {
 
     @Mock
     private TaskRepository taskRepository;
+
+    @Mock
+    private TaskEventService taskEventService;
 
     @InjectMocks
     private TaskService taskService;
@@ -119,6 +124,7 @@ class TaskServiceTest {
         assertEquals(1L, result.getId());
         assertEquals("New Task", result.getTitle());
         verify(taskRepository).save(task);
+        verify(taskEventService).broadcast(TaskEvent.Action.CREATED, savedTask);
     }
 
     @Test
@@ -141,6 +147,7 @@ class TaskServiceTest {
         assertEquals("A description", result.getDescription());
         assertEquals(TaskStatus.TODO, result.getStatus());
         verify(taskRepository).save(task);
+        verify(taskEventService).broadcast(TaskEvent.Action.CREATED, savedTask);
     }
 
     // --- updateTask ---
@@ -162,6 +169,7 @@ class TaskServiceTest {
         assertEquals(TaskStatus.IN_PROGRESS, result.getStatus());
         verify(taskRepository).findById(1L);
         verify(taskRepository).save(existing);
+        verify(taskEventService).broadcast(TaskEvent.Action.UPDATED, existing);
     }
 
     @Test
@@ -171,6 +179,7 @@ class TaskServiceTest {
         assertThrows(TaskNotFoundException.class, () -> taskService.updateTask(99L, new Task()));
         verify(taskRepository).findById(99L);
         verify(taskRepository, never()).save(any());
+        verify(taskEventService, never()).broadcast(any(), any());
     }
 
     // --- patchTask ---
@@ -192,6 +201,7 @@ class TaskServiceTest {
         assertEquals(TaskStatus.DONE, result.getStatus());
         verify(taskRepository).findById(1L);
         verify(taskRepository).save(existing);
+        verify(taskEventService).broadcast(TaskEvent.Action.UPDATED, existing);
     }
 
     @Test
@@ -201,28 +211,30 @@ class TaskServiceTest {
         assertThrows(TaskNotFoundException.class, () -> taskService.patchTask(99L, new Task()));
         verify(taskRepository).findById(99L);
         verify(taskRepository, never()).save(any());
+        verify(taskEventService, never()).broadcast(any(), any());
     }
 
     // --- deleteTask ---
 
     @Test
     void shouldDeleteTask() {
-        Long taskId = 1L;
-        when(taskRepository.existsById(taskId)).thenReturn(true);
+        Task existing = new Task(1L, "Task to delete");
+        when(taskRepository.findById(1L)).thenReturn(Optional.of(existing));
 
-        taskService.deleteTask(taskId);
+        taskService.deleteTask(1L);
 
-        verify(taskRepository).existsById(taskId);
-        verify(taskRepository).deleteById(taskId);
+        verify(taskRepository).findById(1L);
+        verify(taskRepository).deleteById(1L);
+        verify(taskEventService).broadcast(TaskEvent.Action.DELETED, existing);
     }
 
     @Test
     void shouldThrowTaskNotFoundExceptionWhenDeletingNonExistentTask() {
-        Long nonExistentId = 99L;
-        when(taskRepository.existsById(nonExistentId)).thenReturn(false);
+        when(taskRepository.findById(99L)).thenReturn(Optional.empty());
 
-        assertThrows(TaskNotFoundException.class, () -> taskService.deleteTask(nonExistentId));
-        verify(taskRepository).existsById(nonExistentId);
-        verify(taskRepository, never()).deleteById(nonExistentId);
+        assertThrows(TaskNotFoundException.class, () -> taskService.deleteTask(99L));
+        verify(taskRepository).findById(99L);
+        verify(taskRepository, never()).deleteById(any());
+        verify(taskEventService, never()).broadcast(any(), any());
     }
 }

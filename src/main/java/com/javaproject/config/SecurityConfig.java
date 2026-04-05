@@ -37,6 +37,7 @@ public class SecurityConfig {
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
                         .requestMatchers("/h2-console/**").permitAll()
+                        .requestMatchers("/ws/**").permitAll()
                         // Role-based access: only ADMIN can delete tasks
                         .requestMatchers(HttpMethod.DELETE, "/tasks/**").hasRole("ADMIN")
                         // All other task endpoints require authentication
