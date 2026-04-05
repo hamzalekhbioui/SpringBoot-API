@@ -2,26 +2,6 @@
 
 A production-ready Task Management REST API built with **Spring Boot 3**, **Java 21**, and **Spring Data JPA**. Features JWT authentication, role-based access control, Swagger docs, comprehensive error handling, validation, filtering, and pagination.
 
----
-
-## Architecture
-
-```
-┌──────────────┐     ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│   Client     │────▶│  Controller  │────▶│   Service    │────▶│  Repository  │
-│  (REST)      │◀────│  (Validation)│◀────│  (Business)  │◀────│  (JPA/H2)    │
-└──────────────┘     └──────────────┘     └──────────────┘     └──────────────┘
-        │                   │
-        │            ┌──────▼───────┐
-        │            │   Global     │
-        │            │  Exception   │
-        │            │   Handler    │
-        │            └──────────────┘
-        │
-  ┌─────▼──────┐     ┌──────────────┐     ┌──────────────┐
-  │ JWT Filter │────▶│  Security    │────▶│  JWT Service  │
-  │ (Auth)     │     │  Config      │     │  (Token Gen)  │
-  └────────────┘     └──────────────┘     └──────────────┘
 ```
 
 **Layers:**
